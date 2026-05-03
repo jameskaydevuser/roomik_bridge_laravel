@@ -18,7 +18,7 @@ jobs:
         PORT: ${{ secrets.PORT }}
         PASSWORD: ${{ secrets.PASSWORD }}
         source: "."
-        target: "/home/bridge/public_html"
+        target: "/home/apibridge/public_html"
 
     - name: Executing remote command
       uses: appleboy/ssh-action@master
@@ -27,4 +27,4 @@ jobs:
         USERNAME: ${{ secrets.USERNAME }}
         PORT: ${{ secrets.PORT }}
         PASSWORD: ${{ secrets.PASSWORD }}
-        script: "chmod 777 -R /home/bridge/public_html/storage && chmod 777 -R /home/bridge/public_html/public && rm -R /home/bridge/public_html/.git && chown -R www-data:www-data /home/bridge/public_html/storage /home/bridge/public_html/public/storage"
+        script: "chmod 777 -R /home/apibridge/public_html/storage && chmod 777 -R /home/apibridge/public_html/public && rm -R /home/apibridge/public_html/.git && chown -R www-data:www-data /home/apibridge/public_html/storage /home/apibridge/public_html/public/storage"
