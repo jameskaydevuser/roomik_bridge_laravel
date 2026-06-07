@@ -165,6 +165,96 @@
             }
         },
         "/api/ebay/listings/by-sku": {
+            "get": {
+                "tags": [
+                    "eBay Listings"
+                ],
+                "summary": "Get eBay listings for a SKU using Inventory API",
+                "operationId": "d4fe8baca2523de8098aee8c08516082",
+                "parameters": [
+                    {
+                        "name": "sku",
+                        "in": "query",
+                        "description": "The SKU value to retrieve listings for",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "eBay listings retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "sku": {
+                                            "type": "string",
+                                            "example": "ABC123"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "sku": {
+                                                        "type": "string",
+                                                        "example": "ABC123"
+                                                    },
+                                                    "offer_id": {
+                                                        "type": "string",
+                                                        "example": "123456789"
+                                                    },
+                                                    "listing_id": {
+                                                        "type": "string",
+                                                        "example": "987654321"
+                                                    },
+                                                    "listing_status": {
+                                                        "type": "string",
+                                                        "example": "ACTIVE"
+                                                    },
+                                                    "marketplace_id": {
+                                                        "type": "string",
+                                                        "example": "EBAY_US"
+                                                    },
+                                                    "format": {
+                                                        "type": "string",
+                                                        "example": "FIXED_PRICE"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "eBay API Error"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
             "post": {
                 "tags": [
                     "eBay Listings"
@@ -238,7 +328,7 @@
                     "eBay Listings"
                 ],
                 "summary": "Fetch eBay listing data by Item IDs",
-                "operationId": "977fc940181a93e82b947763c004dfc9",
+                "operationId": "d9ec29a8b6b5fa309e1536559728bd34",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -291,6 +381,78 @@
                     },
                     "422": {
                         "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/ebay/listings/item-ids-by-custom-label": {
+            "get": {
+                "tags": [
+                    "eBay Listings"
+                ],
+                "summary": "Find eBay Item IDs by Custom label (SKU)",
+                "description": "Returns Item IDs whose Custom label (eBay SKU field) matches the provided SKU. Uses a direct GetItem lookup and a filtered GetSellerList query (not a full-catalog scan).",
+                "operationId": "24bcd0a9156d8e417c4db6691a500ff1",
+                "parameters": [
+                    {
+                        "name": "sku",
+                        "in": "query",
+                        "description": "Custom label / SKU value to search for",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "ST101"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Item IDs found for the given Custom label",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "sku": {
+                                            "type": "string",
+                                            "example": "ST101"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "item_ids": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "example": [
+                                                "270646159307",
+                                                "270646159308"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "eBay API Error"
                     }
                 },
                 "security": [

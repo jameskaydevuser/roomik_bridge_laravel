@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'ebay' => [
+        'client_id' => env('EBAY_CLIENT_ID'),
+        'client_secret' => env('EBAY_CLIENT_SECRET'),
+        'refresh_token' => env('EBAY_REFRESH_TOKEN'),
+        'env' => env('EBAY_ENV', env('EBAY_MODE', 'sandbox')),
+        'marketplace_id' => env('EBAY_MARKETPLACE_ID', 'EBAY_US'),
+    ],
+
 ];

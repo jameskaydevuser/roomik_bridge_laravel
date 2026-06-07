@@ -17,7 +17,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // eBay Listing Routes
     Route::prefix('ebay')->group(function () {
+        Route::get('/listings/by-sku', [\App\Http\Controllers\Api\EbayListingController::class, 'bySku']);
         Route::post('/listings/by-sku', [\App\Http\Controllers\Api\EbayListingController::class, 'bySku']);
+        Route::get('/listings/item-ids-by-custom-label', [\App\Http\Controllers\Api\EbayListingController::class, 'itemIdsByCustomLabel']);
         Route::post('/listings/by-item-id', [\App\Http\Controllers\Api\EbayListingController::class, 'byItemId']);
     });
 

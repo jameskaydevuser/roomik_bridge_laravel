@@ -2,8 +2,6 @@
 
 namespace App\Services\Ebay;
 
-use Illuminate\Support\Facades\Log;
-
 class EbayListingService
 {
     protected EbayClient $client;
@@ -12,7 +10,7 @@ class EbayListingService
     protected EbayRowsFormatter $formatter;
 
     public function __construct(
-        EbayClient $client, 
+        EbayClient $client,
         SkuResolverInterface $skuResolver,
         EbayListingTransformer $transformer,
         EbayRowsFormatter $formatter
@@ -24,25 +22,13 @@ class EbayListingService
     }
 
     /**
-     * Fetch listings by SKUs.
+     * Fetch listings by SKUs (one GetItem call per SKU).
      */
     public function getListingsBySkus(array $skus): array
     {
         $results = [];
         foreach ($skus as $sku) {
-            $itemIds = $this->skuResolver->resolve($sku);
-            
-            if (empty($itemIds)) {
-                $results[] = [
-                    'sku' => $sku,
-                    'error' => "Could not resolve SKU to any eBay Item ID",
-                ];
-                continue;
-            }
-
-            foreach ($itemIds as $itemId) {
-                $results[] = $this->getListingByItemId($itemId, $sku);
-            }
+            $results[] = $this->getItemIdsBySku((string) $sku);
         }
 
         return $results;
@@ -55,9 +41,82 @@ class EbayListingService
     {
         $results = [];
         foreach ($itemIds as $itemId) {
-            $results[] = $this->getListingByItemId($itemId);
+            $results[] = [
+                'item_id' => $itemId,
+                'listing' => $this->getListingByItemId((string) $itemId),
+            ];
         }
+
         return $results;
+    }
+
+    /**
+     * Fetch a single listing by SKU (one eBay API call).
+     */
+    public function getItemIdsBySku(string $sku): array
+    {
+        $itemIds = [];
+        $page = 1;
+        $entriesPerPage = 200;
+
+        // Active listings: use "now" as EndTimeFrom and up to 120 days ahead as EndTimeTo.
+        $endTimeFrom = gmdate('Y-m-d\TH:i:s.000\Z');
+        $endTimeTo = gmdate('Y-m-d\TH:i:s.000\Z', strtotime('+119 days'));
+
+
+        do {
+            $escapedSku = htmlspecialchars($sku, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+
+            $xmlBody = "
+            <DetailLevel>ReturnAll</DetailLevel>
+            <EndTimeFrom>{$endTimeFrom}</EndTimeFrom>
+            <EndTimeTo>{$endTimeTo}</EndTimeTo>
+            <SKUArray>
+                <SKU>{$escapedSku}</SKU>
+            </SKUArray>
+            <Pagination>
+                <EntriesPerPage>{$entriesPerPage}</EntriesPerPage>
+                <PageNumber>{$page}</PageNumber>
+            </Pagination>
+        ";
+
+            $response = $this->client->callTradingApi('GetSellerList', $xmlBody);
+
+            if (!$response) {
+                return [
+                    'sku' => $sku,
+                    'error' => 'eBay API Error: No response from eBay.',
+                    'item_ids' => $itemIds,
+                ];
+            }
+
+            if ((string) $response->Ack === 'Failure') {
+                return [
+                    'sku' => $sku,
+                    'error' => 'eBay API Error: ' . ($response->Errors->LongMessage ?? 'Unknown eBay error'),
+                    'item_ids' => $itemIds,
+                ];
+            }
+
+            if (isset($response->ItemArray->Item)) {
+                foreach ($response->ItemArray->Item as $item) {
+                    if (isset($item->ItemID)) {
+                        $itemIds[] = (string) $item->ItemID;
+                    }
+                }
+            }
+
+            $totalPages = isset($response->PaginationResult->TotalNumberOfPages)
+                ? (int) $response->PaginationResult->TotalNumberOfPages
+                : 1;
+
+            $page++;
+        } while ($page <= $totalPages);
+
+        return [
+            'sku' => $sku,
+            'item_ids' => array_values(array_unique($itemIds)),
+        ];
     }
 
     /**
@@ -76,21 +135,20 @@ class EbayListingService
             return [
                 'item_id' => $itemId,
                 'sku' => $sku,
-                'error' => "eBay API Error: No response from eBay. Please check your configuration and credentials.",
+                'error' => 'eBay API Error: No response from eBay. Please check your configuration and credentials.',
             ];
         }
 
-        if ((string)$response->Ack === 'Failure') {
+        if ((string) $response->Ack === 'Failure') {
             return [
                 'item_id' => $itemId,
                 'sku' => $sku,
-                'error' => "eBay API Error: " . ($response->Errors->LongMessage ?? 'Unknown eBay error'),
+                'error' => 'eBay API Error: ' . ($response->Errors->LongMessage ?? 'Unknown eBay error'),
             ];
         }
 
         $normalized = $this->transformer->transform($response);
-        
-        // If SKU was provided via resolver, ensure it's in the response
+
         if ($sku && empty($normalized['sku'])) {
             $normalized['sku'] = $sku;
         }

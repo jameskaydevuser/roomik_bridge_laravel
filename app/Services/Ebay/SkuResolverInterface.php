@@ -6,9 +6,15 @@ interface SkuResolverInterface
 {
     /**
      * Resolve a SKU to one or more eBay Item IDs.
-     * 
-     * @param string $sku
-     * @return array
+     *
+     * @return string[]
      */
     public function resolve(string $sku): array;
+
+    /**
+     * Resolve Item IDs by matching the listing Custom label (eBay SKU field).
+     *
+     * @return string[]
+     */
+    public function resolveByCustomLabel(string $sku): array;
 }
