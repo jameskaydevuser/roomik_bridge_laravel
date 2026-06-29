@@ -32,7 +32,7 @@ class EbayFitmentCsvService
             foreach ($fitmentRows as $row) {
                 fputcsv($handle, [
                     '',
-                    $itemNumber,
+                    '',
                     $row['relationship'],
                     $row['relationship_details']
                 ]);
