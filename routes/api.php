@@ -21,6 +21,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/listings/by-sku', [\App\Http\Controllers\Api\EbayListingController::class, 'bySku']);
         Route::get('/listings/item-ids-by-custom-label', [\App\Http\Controllers\Api\EbayListingController::class, 'itemIdsByCustomLabel']);
         Route::post('/listings/by-item-id', [\App\Http\Controllers\Api\EbayListingController::class, 'byItemId']);
+        Route::get('/listings/{itemId}/feedback', [\App\Http\Controllers\Api\EbayFeedbackController::class, 'getFeedback']);
+        Route::get('/listings/{itemId}/feedback/export', [\App\Http\Controllers\Api\EbayFeedbackController::class, 'exportFeedback']);
     });
 
     Route::post('/generate-ebay-fitment-csv', [\App\Http\Controllers\Api\EbayListingController::class, 'generateFitmentCsv']);

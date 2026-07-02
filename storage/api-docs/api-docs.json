@@ -164,6 +164,344 @@
                 }
             }
         },
+        "/api/ebay/listings/{itemId}/feedback": {
+            "get": {
+                "tags": [
+                    "eBay Feedback"
+                ],
+                "summary": "Get feedback for an eBay item",
+                "operationId": "57c18da162cc43ce74cea41ed66972a4",
+                "parameters": [
+                    {
+                        "name": "itemId",
+                        "in": "path",
+                        "description": "The eBay Item ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Number of items per page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "comment_text",
+                        "in": "query",
+                        "description": "Partial search in comment text",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "comment_time_from",
+                        "in": "query",
+                        "description": "Filter feedback date/time from",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "comment_time_to",
+                        "in": "query",
+                        "description": "Filter feedback date/time to",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "comment_type",
+                        "in": "query",
+                        "description": "Exact match for comment type",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Positive",
+                                "Neutral",
+                                "Negative"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "role",
+                        "in": "query",
+                        "description": "Exact match for role",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Buyer",
+                                "Seller"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "eBay feedback retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "current_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "ebay_item_id": {
+                                                        "type": "string",
+                                                        "example": "270646159307"
+                                                    },
+                                                    "feedback_id": {
+                                                        "type": "string",
+                                                        "example": "1029384756"
+                                                    },
+                                                    "commenting_user": {
+                                                        "type": "string",
+                                                        "example": "buyer_user"
+                                                    },
+                                                    "commenting_user_score": {
+                                                        "type": "integer",
+                                                        "example": 120
+                                                    },
+                                                    "comment_text": {
+                                                        "type": "string",
+                                                        "example": "Great seller, fast shipping!"
+                                                    },
+                                                    "comment_time": {
+                                                        "type": "string",
+                                                        "format": "date-time",
+                                                        "example": "2026-07-02T12:00:00Z"
+                                                    },
+                                                    "comment_type": {
+                                                        "type": "string",
+                                                        "example": "Positive"
+                                                    },
+                                                    "role": {
+                                                        "type": "string",
+                                                        "example": "Buyer"
+                                                    },
+                                                    "transaction_id": {
+                                                        "type": "string",
+                                                        "example": "9876543210"
+                                                    },
+                                                    "created_at": {
+                                                        "type": "string",
+                                                        "format": "date-time",
+                                                        "example": "2026-07-02T15:00:00Z"
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time",
+                                                        "example": "2026-07-02T15:00:00Z"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "first_page_url": {
+                                            "type": "string",
+                                            "example": "http://localhost:8000/api/ebay/listings/270646159307/feedback?page=1"
+                                        },
+                                        "from": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "last_page": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "last_page_url": {
+                                            "type": "string",
+                                            "example": "http://localhost:8000/api/ebay/listings/270646159307/feedback?page=1"
+                                        },
+                                        "links": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "next_page_url": {
+                                            "type": "string",
+                                            "example": null,
+                                            "nullable": true
+                                        },
+                                        "path": {
+                                            "type": "string",
+                                            "example": "http://localhost:8000/api/ebay/listings/270646159307/feedback"
+                                        },
+                                        "per_page": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "prev_page_url": {
+                                            "type": "string",
+                                            "example": null,
+                                            "nullable": true
+                                        },
+                                        "to": {
+                                            "type": "integer",
+                                            "example": 15
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "Server or eBay API error"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/ebay/listings/{itemId}/feedback/export": {
+            "get": {
+                "tags": [
+                    "eBay Feedback"
+                ],
+                "summary": "Export feedback for an eBay item as a CSV file",
+                "operationId": "874809e435e0ab111004778d0a86efec",
+                "parameters": [
+                    {
+                        "name": "itemId",
+                        "in": "path",
+                        "description": "The eBay Item ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "comment_text",
+                        "in": "query",
+                        "description": "Partial search in comment text",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "comment_time_from",
+                        "in": "query",
+                        "description": "Filter feedback date/time from",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "comment_time_to",
+                        "in": "query",
+                        "description": "Filter feedback date/time to",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "comment_type",
+                        "in": "query",
+                        "description": "Exact match for comment type",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Positive",
+                                "Neutral",
+                                "Negative"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "role",
+                        "in": "query",
+                        "description": "Exact match for role",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Buyer",
+                                "Seller"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CSV file containing eBay feedback exported successfully",
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "500": {
+                        "description": "Server or eBay API error"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/ebay/listings/by-sku": {
             "get": {
                 "tags": [
@@ -322,146 +660,6 @@
                 ]
             }
         },
-        "/api/ebay/listings/by-item-id": {
-            "post": {
-                "tags": [
-                    "eBay Listings"
-                ],
-                "summary": "Fetch eBay listing data by Item IDs",
-                "operationId": "d9ec29a8b6b5fa309e1536559728bd34",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "item_ids"
-                                ],
-                                "properties": {
-                                    "item_ids": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "example": [
-                                            "270646159307"
-                                        ]
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Listings fetched successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "example": "success"
-                                        },
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object"
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated"
-                    },
-                    "422": {
-                        "description": "Validation error"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
-        "/api/ebay/listings/item-ids-by-custom-label": {
-            "get": {
-                "tags": [
-                    "eBay Listings"
-                ],
-                "summary": "Find eBay Item IDs by Custom label (SKU)",
-                "description": "Returns Item IDs whose Custom label (eBay SKU field) matches the provided SKU. Uses a direct GetItem lookup and a filtered GetSellerList query (not a full-catalog scan).",
-                "operationId": "24bcd0a9156d8e417c4db6691a500ff1",
-                "parameters": [
-                    {
-                        "name": "sku",
-                        "in": "query",
-                        "description": "Custom label / SKU value to search for",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "example": "ST101"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Item IDs found for the given Custom label",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "sku": {
-                                            "type": "string",
-                                            "example": "ST101"
-                                        },
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 2
-                                        },
-                                        "item_ids": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            },
-                                            "example": [
-                                                "270646159307",
-                                                "270646159308"
-                                            ]
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthenticated"
-                    },
-                    "422": {
-                        "description": "Validation error"
-                    },
-                    "500": {
-                        "description": "eBay API Error"
-                    }
-                },
-                "security": [
-                    {
-                        "sanctum": []
-                    }
-                ]
-            }
-        },
         "/api/generate-ebay-fitment-csv": {
             "post": {
                 "tags": [
@@ -558,6 +756,10 @@
         {
             "name": "Authentication",
             "description": "Authentication"
+        },
+        {
+            "name": "eBay Feedback",
+            "description": "eBay Feedback"
         },
         {
             "name": "eBay Listings",
