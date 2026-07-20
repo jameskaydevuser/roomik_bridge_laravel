@@ -15,6 +15,9 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
+    // User CRUD Routes
+    Route::apiResource('users', \App\Http\Controllers\Api\UserController::class);
+
     // eBay Listing Routes
     Route::prefix('ebay')->group(function () {
         Route::get('/listings/by-sku', [\App\Http\Controllers\Api\EbayListingController::class, 'bySku']);
