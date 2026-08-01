@@ -9,6 +9,7 @@ use App\Services\Ebay\EbayListingService;
 use App\Services\EbayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use OpenApi\Attributes as OA;
 
 class EbayListingController extends Controller
@@ -103,6 +104,8 @@ class EbayListingController extends Controller
     )]
     public function bySku(Request $request): JsonResponse
     {
+        Gate::authorize('view', self::class);
+
         $validated = $request->validate([
             'sku' => 'required|string',
         ]);
@@ -117,6 +120,8 @@ class EbayListingController extends Controller
 
     public function byItemId(FetchByItemIdRequest $request): JsonResponse
     {
+        Gate::authorize('view', self::class);
+
         $itemIds = $request->input('item_ids');
         $listings = $this->ebayService->getListingsByItemIds($itemIds);
 
@@ -166,6 +171,8 @@ class EbayListingController extends Controller
     )]
     public function generateFitmentCsv(\App\Http\Requests\Ebay\GenerateFitmentCsvRequest $request)
     {
+        Gate::authorize('export', self::class);
+
         $csv = $this->fitmentService->generate(
             $request->input('item_number'),
             $request->input('fitment_rows'),

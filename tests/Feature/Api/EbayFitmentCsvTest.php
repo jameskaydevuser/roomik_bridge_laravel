@@ -15,7 +15,12 @@ class EbayFitmentCsvTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Seed Spatie permissions
+        \Spatie\Permission\Models\Permission::findOrCreate('export_ebay_listing', 'web');
+
         $this->user = User::factory()->create();
+        $this->user->givePermissionTo('export_ebay_listing');
     }
 
     public function test_it_generates_ebay_fitment_csv()
@@ -72,5 +77,26 @@ class EbayFitmentCsvTest extends TestCase
     {
         $response = $this->postJson('/api/generate-ebay-fitment-csv', []);
         $response->assertStatus(401);
+    }
+
+    public function test_it_denies_access_without_permission()
+    {
+        $unauthorizedUser = User::factory()->create();
+        
+        $payload = [
+            'item_number' => '123456789012',
+            'fitment_rows' => [
+                [
+                    'relationship' => 'Compatibility',
+                    'relationship_details' => 'Make=Yamaha|Model=Big Bear 350|Year=1998|Submodel=YFM350FW 4x4'
+                ]
+            ],
+            'ebay_item_ids' => ['270646159307']
+        ];
+
+        $response = $this->actingAs($unauthorizedUser)
+            ->postJson('/api/generate-ebay-fitment-csv', $payload);
+
+        $response->assertStatus(403);
     }
 }

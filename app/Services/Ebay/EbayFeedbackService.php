@@ -191,8 +191,8 @@ class EbayFeedbackService
                         'commenting_user' => (string) $detail->CommentingUser,
                         'commenting_user_score' => isset($detail->CommentingUserScore) ? (int) $detail->CommentingUserScore : null,
                         'comment_text' => isset($detail->CommentText) ? (string) $detail->CommentText : null,
-                        'comment_time' => isset($detail->CommentTime) 
-                            ? Carbon::parse((string) $detail->CommentTime)->toDateTimeString() 
+                        'comment_time' => isset($detail->CommentTime)
+                            ? Carbon::parse((string) $detail->CommentTime)->toDateTimeString()
                             : null,
                         'comment_type' => (string) $detail->CommentType,
                         'role' => (string) $detail->Role,

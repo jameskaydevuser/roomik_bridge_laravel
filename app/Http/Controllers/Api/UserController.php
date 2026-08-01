@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Gate;
 use OpenApi\Attributes as OA;
 
 class UserController extends Controller
@@ -49,6 +50,17 @@ class UserController extends Controller
                                     new OA\Property(property: "id", type: "integer", example: 1),
                                     new OA\Property(property: "name", type: "string", example: "John Doe"),
                                     new OA\Property(property: "email", type: "string", format: "email", example: "john@example.com"),
+                                    new OA\Property(
+                                        property: "roles",
+                                        type: "array",
+                                        items: new OA\Items(
+                                            properties: [
+                                                new OA\Property(property: "id", type: "integer", example: 1),
+                                                new OA\Property(property: "name", type: "string", example: "Admin"),
+                                                new OA\Property(property: "guard_name", type: "string", example: "web")
+                                            ]
+                                        )
+                                    ),
                                     new OA\Property(property: "created_at", type: "string", format: "date-time", example: "2026-07-16T08:00:00Z"),
                                     new OA\Property(property: "updated_at", type: "string", format: "date-time", example: "2026-07-16T08:00:00Z")
                                 ]
@@ -73,8 +85,10 @@ class UserController extends Controller
     )]
     public function index(Request $request): JsonResponse
     {
+        Gate::authorize('viewAny', User::class);
+
         $perPage = (int) $request->query('per_page', 15);
-        $users = User::paginate($perPage);
+        $users = User::with('roles')->paginate($perPage);
 
         return response()->json($users);
     }
@@ -91,7 +105,13 @@ class UserController extends Controller
                 properties: [
                     new OA\Property(property: "name", type: "string", example: "Jane Doe"),
                     new OA\Property(property: "email", type: "string", format: "email", example: "jane@example.com"),
-                    new OA\Property(property: "password", type: "string", format: "password", example: "password123")
+                    new OA\Property(property: "password", type: "string", format: "password", example: "password123"),
+                    new OA\Property(
+                        property: "roles",
+                        type: "array",
+                        items: new OA\Items(type: "string"),
+                        example: ["Admin"]
+                    )
                 ]
             )
         ),
@@ -104,6 +124,17 @@ class UserController extends Controller
                         new OA\Property(property: "id", type: "integer", example: 2),
                         new OA\Property(property: "name", type: "string", example: "Jane Doe"),
                         new OA\Property(property: "email", type: "string", format: "email", example: "jane@example.com"),
+                        new OA\Property(
+                            property: "roles",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "id", type: "integer", example: 1),
+                                    new OA\Property(property: "name", type: "string", example: "Admin"),
+                                    new OA\Property(property: "guard_name", type: "string", example: "web")
+                                ]
+                            )
+                        ),
                         new OA\Property(property: "created_at", type: "string", format: "date-time", example: "2026-07-16T08:00:00Z"),
                         new OA\Property(property: "updated_at", type: "string", format: "date-time", example: "2026-07-16T08:00:00Z")
                     ]
@@ -115,12 +146,18 @@ class UserController extends Controller
     )]
     public function store(StoreUserRequest $request): JsonResponse
     {
+        Gate::authorize('create', User::class);
+
         $data = $request->validated();
         $data['password'] = Hash::make($data['password']);
 
         $user = User::create($data);
 
-        return response()->json($user, 201);
+        if ($request->has('roles')) {
+            $user->syncRoles($request->roles);
+        }
+
+        return response()->json($user->load('roles'), 201);
     }
 
     #[OA\Get(
@@ -146,6 +183,17 @@ class UserController extends Controller
                         new OA\Property(property: "id", type: "integer", example: 1),
                         new OA\Property(property: "name", type: "string", example: "John Doe"),
                         new OA\Property(property: "email", type: "string", format: "email", example: "john@example.com"),
+                        new OA\Property(
+                            property: "roles",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "id", type: "integer", example: 1),
+                                    new OA\Property(property: "name", type: "string", example: "Admin"),
+                                    new OA\Property(property: "guard_name", type: "string", example: "web")
+                                ]
+                            )
+                        ),
                         new OA\Property(property: "created_at", type: "string", format: "date-time", example: "2026-07-16T08:00:00Z"),
                         new OA\Property(property: "updated_at", type: "string", format: "date-time", example: "2026-07-16T08:00:00Z")
                     ]
@@ -157,7 +205,9 @@ class UserController extends Controller
     )]
     public function show(User $user): JsonResponse
     {
-        return response()->json($user);
+        Gate::authorize('view', $user);
+
+        return response()->json($user->load('roles'));
     }
 
     #[OA\Put(
@@ -180,7 +230,13 @@ class UserController extends Controller
                 properties: [
                     new OA\Property(property: "name", type: "string", example: "John Updated"),
                     new OA\Property(property: "email", type: "string", format: "email", example: "john_updated@example.com"),
-                    new OA\Property(property: "password", type: "string", format: "password", example: "newpassword123")
+                    new OA\Property(property: "password", type: "string", format: "password", example: "newpassword123"),
+                    new OA\Property(
+                        property: "roles",
+                        type: "array",
+                        items: new OA\Items(type: "string"),
+                        example: ["Admin"]
+                    )
                 ]
             )
         ),
@@ -193,6 +249,17 @@ class UserController extends Controller
                         new OA\Property(property: "id", type: "integer", example: 1),
                         new OA\Property(property: "name", type: "string", example: "John Updated"),
                         new OA\Property(property: "email", type: "string", format: "email", example: "john_updated@example.com"),
+                        new OA\Property(
+                            property: "roles",
+                            type: "array",
+                            items: new OA\Items(
+                                properties: [
+                                    new OA\Property(property: "id", type: "integer", example: 1),
+                                    new OA\Property(property: "name", type: "string", example: "Admin"),
+                                    new OA\Property(property: "guard_name", type: "string", example: "web")
+                                ]
+                            )
+                        ),
                         new OA\Property(property: "created_at", type: "string", format: "date-time", example: "2026-07-16T08:00:00Z"),
                         new OA\Property(property: "updated_at", type: "string", format: "date-time", example: "2026-07-16T08:00:00Z")
                     ]
@@ -205,6 +272,8 @@ class UserController extends Controller
     )]
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
+        Gate::authorize('update', $user);
+
         $data = $request->validated();
         if (isset($data['password'])) {
             $data['password'] = Hash::make($data['password']);
@@ -212,7 +281,11 @@ class UserController extends Controller
 
         $user->update($data);
 
-        return response()->json($user);
+        if ($request->has('roles')) {
+            $user->syncRoles($request->roles);
+        }
+
+        return response()->json($user->load('roles'));
     }
 
     #[OA\Delete(
@@ -245,6 +318,8 @@ class UserController extends Controller
     )]
     public function destroy(User $user): JsonResponse
     {
+        Gate::authorize('delete', $user);
+
         if($user->id == auth()->id()) {
             return response()->json([
                 'message' => 'You cannot delete your own account'

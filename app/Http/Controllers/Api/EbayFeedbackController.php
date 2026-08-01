@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Services\Ebay\EbayFeedbackService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
+use App\Models\EbayItemFeedback;
 use OpenApi\Attributes as OA;
 
 class EbayFeedbackController extends Controller
@@ -129,6 +131,8 @@ class EbayFeedbackController extends Controller
     )]
     public function getFeedback(Request $request, string $itemId): JsonResponse
     {
+        Gate::authorize('view', EbayItemFeedback::class);
+
         $validator = Validator::make(
             array_merge(
                 ['itemId' => $itemId],
@@ -231,6 +235,8 @@ class EbayFeedbackController extends Controller
     )]
     public function exportFeedback(Request $request, string $itemId)
     {
+        Gate::authorize('export', EbayItemFeedback::class);
+
         $validator = Validator::make(
             array_merge(
                 ['itemId' => $itemId],

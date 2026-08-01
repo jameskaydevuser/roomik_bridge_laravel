@@ -16,7 +16,19 @@ class UserControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Seed Spatie permissions
+        \Spatie\Permission\Models\Permission::findOrCreate('add_user', 'web');
+        \Spatie\Permission\Models\Permission::findOrCreate('list_users', 'web');
+        \Spatie\Permission\Models\Permission::findOrCreate('update_user', 'web');
+        \Spatie\Permission\Models\Permission::findOrCreate('delete_user', 'web');
+
         $this->user = User::factory()->create();
+        $this->user->givePermissionTo(['add_user', 'list_users', 'update_user', 'delete_user']);
+
+        // Create standard roles for testing
+        \Spatie\Permission\Models\Role::create(['name' => 'Admin', 'guard_name' => 'web']);
+        \Spatie\Permission\Models\Role::create(['name' => 'Manager', 'guard_name' => 'web']);
     }
 
     public function test_crud_endpoints_require_authentication(): void
@@ -48,7 +60,16 @@ class UserControllerTest extends TestCase
             ->assertJsonStructure([
                 'current_page',
                 'data' => [
-                    '*' => ['id', 'name', 'email', 'created_at', 'updated_at']
+                    '*' => [
+                        'id',
+                        'name',
+                        'email',
+                        'roles' => [
+                            '*' => ['id', 'name', 'guard_name']
+                        ],
+                        'created_at',
+                        'updated_at'
+                    ]
                 ],
                 'total',
                 'per_page'
@@ -62,6 +83,7 @@ class UserControllerTest extends TestCase
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
             'password' => 'secret1234',
+            'roles' => ['Admin', 'Manager'],
         ];
 
         $response = $this->actingAs($this->user)
@@ -72,7 +94,8 @@ class UserControllerTest extends TestCase
             ->assertJson([
                 'name' => 'Jane Doe',
                 'email' => 'jane@example.com',
-            ]);
+            ])
+            ->assertJsonCount(2, 'roles');
 
         $this->assertDatabaseHas('users', [
             'email' => 'jane@example.com',
@@ -80,6 +103,8 @@ class UserControllerTest extends TestCase
 
         $createdUser = User::where('email', 'jane@example.com')->first();
         $this->assertTrue(Hash::check('secret1234', $createdUser->password));
+        $this->assertTrue($createdUser->hasRole('Admin'));
+        $this->assertTrue($createdUser->hasRole('Manager'));
     }
 
     public function test_create_user_validates_required_fields(): void
@@ -137,11 +162,13 @@ class UserControllerTest extends TestCase
             'email' => 'old@example.com',
             'password' => bcrypt('old_password'),
         ]);
+        $targetUser->assignRole('Admin');
 
         $response = $this->actingAs($this->user)
             ->putJson("/api/users/{$targetUser->id}", [
                 'name' => 'New Name',
                 'password' => 'new_password123',
+                'roles' => ['Manager'],
             ]);
 
         $response->assertStatus(200)
@@ -150,10 +177,13 @@ class UserControllerTest extends TestCase
                 'id' => $targetUser->id,
                 'name' => 'New Name',
                 'email' => 'old@example.com',
-            ]);
+            ])
+            ->assertJsonCount(1, 'roles');
 
         $targetUser->refresh();
         $this->assertTrue(Hash::check('new_password123', $targetUser->password));
+        $this->assertTrue($targetUser->hasRole('Manager'));
+        $this->assertFalse($targetUser->hasRole('Admin'));
     }
 
     public function test_update_user_ignores_current_email_for_uniqueness(): void
@@ -198,5 +228,43 @@ class UserControllerTest extends TestCase
         $this->assertDatabaseMissing('users', [
             'id' => $targetUser->id,
         ]);
+    }
+
+    public function test_user_endpoints_deny_access_without_permission(): void
+    {
+        $unauthorizedUser = User::factory()->create();
+
+        // index
+        $this->actingAs($unauthorizedUser)
+            ->getJson('/api/users')
+            ->assertStatus(403);
+
+        // store
+        $this->actingAs($unauthorizedUser)
+            ->postJson('/api/users', [
+                'name' => 'Failed User',
+                'email' => 'failed@example.com',
+                'password' => 'password123',
+            ])
+            ->assertStatus(403);
+
+        // show
+        $targetUser = User::factory()->create();
+        $this->actingAs($unauthorizedUser)
+            ->getJson("/api/users/{$targetUser->id}")
+            ->assertStatus(403);
+
+        // update
+        $this->actingAs($unauthorizedUser)
+            ->putJson("/api/users/{$targetUser->id}", [
+                'name' => 'Hack',
+                'email' => 'hack@example.com',
+            ])
+            ->assertStatus(403);
+
+        // delete
+        $this->actingAs($unauthorizedUser)
+            ->deleteJson("/api/users/{$targetUser->id}")
+            ->assertStatus(403);
     }
 }

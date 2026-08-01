@@ -19,7 +19,13 @@ class EbayListingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Seed Spatie permissions
+        \Spatie\Permission\Models\Permission::findOrCreate('lookup_ebay_listing', 'web');
+        \Spatie\Permission\Models\Permission::findOrCreate('export_ebay_listing', 'web');
+
         $this->user = User::factory()->create();
+        $this->user->givePermissionTo(['lookup_ebay_listing', 'export_ebay_listing']);
     }
 
     public function test_by_item_id_requires_authentication()
@@ -342,6 +348,23 @@ class EbayListingTest extends TestCase
                 <TotalNumberOfPages>1</TotalNumberOfPages>
             </PaginationResult>
         </GetSellerListResponse>";
+    }
+
+    public function test_endpoints_deny_access_without_permission(): void
+    {
+        $unauthorizedUser = User::factory()->create();
+
+        // by-item-id
+        $this->actingAs($unauthorizedUser)
+            ->postJson('/api/ebay/listings/by-item-id', [
+                'item_ids' => ['123456789'],
+            ])
+            ->assertStatus(403);
+
+        // by-sku
+        $this->actingAs($unauthorizedUser)
+            ->getJson('/api/ebay/listings/by-sku?sku=ABC123')
+            ->assertStatus(403);
     }
 
     protected function getMockEbayResponseWithSku($itemId, $sku, $status = 'Active')

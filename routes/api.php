@@ -9,14 +9,22 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
     
     // Example protected route to get user details
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
 
+    // Profile Routes
+    Route::put('/profile', [\App\Http\Controllers\Api\ProfileController::class, 'update']);
+
     // User CRUD Routes
     Route::apiResource('users', \App\Http\Controllers\Api\UserController::class);
+
+    // Role CRUD Routes
+    Route::get('/roles/all', [\App\Http\Controllers\Api\RoleController::class, 'all']);
+    Route::apiResource('roles', \App\Http\Controllers\Api\RoleController::class);
 
     // eBay Listing Routes
     Route::prefix('ebay')->group(function () {

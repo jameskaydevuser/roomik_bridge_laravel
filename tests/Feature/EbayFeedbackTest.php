@@ -20,7 +20,13 @@ class EbayFeedbackTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Seed Spatie permissions
+        \Spatie\Permission\Models\Permission::findOrCreate('get_ebay_feedback', 'web');
+        \Spatie\Permission\Models\Permission::findOrCreate('export_ebay_feedback', 'web');
+
         $this->user = User::factory()->create();
+        $this->user->givePermissionTo(['get_ebay_feedback', 'export_ebay_feedback']);
     }
 
     public function test_endpoint_requires_authentication(): void
@@ -542,6 +548,26 @@ class EbayFeedbackTest extends TestCase
         $this->assertStringContainsString('1001', $content);
         $this->assertStringNotContainsString('1002', $content);
         $this->assertStringNotContainsString('1003', $content);
+    }
+
+    public function test_endpoint_denies_access_without_permission(): void
+    {
+        $unauthorizedUser = User::factory()->create();
+
+        $response = $this->actingAs($unauthorizedUser)
+            ->getJson('/api/ebay/listings/270646159307/feedback');
+
+        $response->assertStatus(403);
+    }
+
+    public function test_export_endpoint_denies_access_without_permission(): void
+    {
+        $unauthorizedUser = User::factory()->create();
+
+        $response = $this->actingAs($unauthorizedUser)
+            ->getJson('/api/ebay/listings/270646159307/feedback/export');
+
+        $response->assertStatus(403);
     }
 
     protected function getMockFeedbackResponse(): string

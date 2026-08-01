@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
@@ -35,6 +36,16 @@ class AuthController extends Controller
                         new OA\Property(property: "message", type: "string", example: "Login successful"),
                         new OA\Property(property: "access_token", type: "string", example: "1|XYZ..."),
                         new OA\Property(property: "token_type", type: "string", example: "Bearer"),
+                        new OA\Property(property: "name", type: "string", example: "Admin User"),
+                        new OA\Property(property: "role", type: "string", nullable: true, example: "Admin"),
+                        new OA\Property(property: "profile_image", type: "string", nullable: true, example: "profile_images/xyz.png"),
+                        new OA\Property(property: "profile_image_url", type: "string", nullable: true, example: "http://localhost:8000/storage/profile_images/xyz.png"),
+                        new OA\Property(
+                            property: "permissions",
+                            type: "array",
+                            items: new OA\Items(type: "string"),
+                            example: ["lookup_ebay_listing", "get_ebay_feedback"]
+                        )
                     ]
                 )
             ),
@@ -69,6 +80,11 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'access_token' => $token,
             'token_type' => 'Bearer',
+            'name' => $user->name,
+            'role' => $user->getRoleNames()->first(),
+            'profile_image' => $user->profile_image,
+            'profile_image_url' => $user->profile_image_url,
+            'permissions' => $user->getAllPermissions()->pluck('name'),
         ], 200);
     }
 
@@ -152,5 +168,45 @@ class AuthController extends Controller
         return response()->json([
             'message' => __($status)
         ], 400);
+    }
+
+    #[OA\Get(
+        path: "/api/me",
+        summary: "Get authenticated user profile details",
+        security: [["sanctum" => []]],
+        tags: ["Authentication"],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Success",
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: "name", type: "string", example: "Admin User"),
+                        new OA\Property(property: "role", type: "string", nullable: true, example: "Admin"),
+                        new OA\Property(property: "profile_image", type: "string", nullable: true, example: "profile_images/xyz.png"),
+                        new OA\Property(property: "profile_image_url", type: "string", nullable: true, example: "http://localhost:8000/storage/profile_images/xyz.png"),
+                        new OA\Property(
+                            property: "permissions",
+                            type: "array",
+                            items: new OA\Items(type: "string"),
+                            example: ["lookup_ebay_listing", "get_ebay_feedback"]
+                        )
+                    ]
+                )
+            ),
+            new OA\Response(response: 401, description: "Unauthenticated")
+        ]
+    )]
+    public function me(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'name' => $user->name,
+            'role' => $user->getRoleNames()->first(),
+            'profile_image' => $user->profile_image,
+            'profile_image_url' => $user->profile_image_url,
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ], 200);
     }
 }
