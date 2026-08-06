@@ -197,6 +197,9 @@ class EbayService
                 $format = 'FIXED_PRICE';
             }
 
+            // Save or update EbayItem record
+            \App\Models\EbayItem::saveOrUpdateSku($itemId, $sku);
+
             return [
                 'success' => true,
                 'sku' => $sku,

@@ -153,6 +153,10 @@ class EbayListingService
             $normalized['sku'] = $sku;
         }
 
+        // Save or update EbayItem record
+        $resolvedSku = $normalized['sku'] ?? null;
+        \App\Models\EbayItem::saveOrUpdateSku($itemId, $resolvedSku);
+
         return $this->formatter->format($normalized);
     }
 }

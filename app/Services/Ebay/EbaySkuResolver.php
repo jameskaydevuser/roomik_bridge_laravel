@@ -43,6 +43,9 @@ class EbaySkuResolver implements SkuResolverInterface
             return [];
         }
 
+        // Save or update EbayItem record
+        \App\Models\EbayItem::saveOrUpdateSku($itemId, $sku);
+
         return [$itemId];
     }
 
@@ -124,6 +127,7 @@ class EbaySkuResolver implements SkuResolverInterface
                     $itemId = trim((string) ($item->ItemID ?? ''));
                     if ($itemId !== '') {
                         $itemIds[$itemId] = true;
+                        \App\Models\EbayItem::saveOrUpdateSku($itemId, $sku);
                     }
                 }
             }

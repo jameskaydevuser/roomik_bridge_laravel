@@ -27,6 +27,13 @@ class EbayFeedbackTest extends TestCase
 
         $this->user = User::factory()->create();
         $this->user->givePermissionTo(['get_ebay_feedback', 'export_ebay_feedback']);
+
+        // Mock EbayListingService to return a dummy SKU by default
+        $mockListingService = Mockery::mock(\App\Services\Ebay\EbayListingService::class);
+        $mockListingService->shouldReceive('getListingByItemId')
+            ->byDefault()
+            ->andReturn(['sku' => 'MOCK-SKU']);
+        $this->app->instance(\App\Services\Ebay\EbayListingService::class, $mockListingService);
     }
 
     public function test_endpoint_requires_authentication(): void
@@ -64,7 +71,9 @@ class EbayFeedbackTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'data' => [
+                'item_id',
+                'sku',
+                'feedback' => [
                     '*' => [
                         'id',
                         'ebay_item_id',
@@ -80,11 +89,17 @@ class EbayFeedbackTest extends TestCase
                         'updated_at',
                     ]
                 ],
-                'current_page',
-                'per_page',
-                'total',
+                'pagination' => [
+                    'current_page',
+                    'per_page',
+                    'total',
+                ]
             ])
-            ->assertJsonCount(2, 'data');
+            ->assertJsonCount(2, 'feedback')
+            ->assertJson([
+                'item_id' => $itemId,
+                'sku' => 'MOCK-SKU',
+            ]);
 
         // Verify the database has the records
         $this->assertDatabaseHas('ebay_item_feedbacks', [
@@ -129,8 +144,8 @@ class EbayFeedbackTest extends TestCase
             ->getJson("/api/ebay/listings/{$itemId}/feedback");
 
         $response->assertStatus(200)
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.feedback_id', '9999');
+            ->assertJsonCount(1, 'feedback')
+            ->assertJsonPath('feedback.0.feedback_id', '9999');
     }
 
     public function test_endpoint_fetches_fresh_data_if_cache_is_expired(): void
@@ -279,40 +294,40 @@ class EbayFeedbackTest extends TestCase
         $response = $this->actingAs($this->user)
             ->getJson("/api/ebay/listings/{$itemId}/feedback?comment_text=payment");
         $response->assertStatus(200)
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.feedback_id', '1001');
+            ->assertJsonCount(1, 'feedback')
+            ->assertJsonPath('feedback.0.feedback_id', '1001');
 
         // 2. Test filtering by comment_type
         $response = $this->actingAs($this->user)
             ->getJson("/api/ebay/listings/{$itemId}/feedback?comment_type=Negative");
         $response->assertStatus(200)
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.feedback_id', '1002');
+            ->assertJsonCount(1, 'feedback')
+            ->assertJsonPath('feedback.0.feedback_id', '1002');
 
         // 3. Test filtering by role
         $response = $this->actingAs($this->user)
             ->getJson("/api/ebay/listings/{$itemId}/feedback?role=Seller");
         $response->assertStatus(200)
-            ->assertJsonCount(2, 'data');
+            ->assertJsonCount(2, 'feedback');
 
         // 4. Test filtering by comment_time_from
         $response = $this->actingAs($this->user)
             ->getJson("/api/ebay/listings/{$itemId}/feedback?comment_time_from=2026-07-02 00:00:00");
         $response->assertStatus(200)
-            ->assertJsonCount(2, 'data'); // 1002 and 1003
+            ->assertJsonCount(2, 'feedback'); // 1002 and 1003
 
         // 5. Test filtering by comment_time_to
         $response = $this->actingAs($this->user)
             ->getJson("/api/ebay/listings/{$itemId}/feedback?comment_time_to=2026-07-02 23:59:59");
         $response->assertStatus(200)
-            ->assertJsonCount(2, 'data'); // 1001 and 1002
+            ->assertJsonCount(2, 'feedback'); // 1001 and 1002
 
         // 6. Test combining multiple filters (role + comment_type)
         $response = $this->actingAs($this->user)
             ->getJson("/api/ebay/listings/{$itemId}/feedback?role=Seller&comment_type=Positive");
         $response->assertStatus(200)
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.feedback_id', '1001');
+            ->assertJsonCount(1, 'feedback')
+            ->assertJsonPath('feedback.0.feedback_id', '1001');
     }
 
     public function test_export_endpoint_requires_authentication(): void
@@ -330,7 +345,7 @@ class EbayFeedbackTest extends TestCase
             ->assertJsonValidationErrors(['itemId']);
     }
 
-    public function test_export_endpoint_returns_csv(): void
+    public function test_export_endpoint_returns_xlsx(): void
     {
         $itemId = '270646159307';
 
@@ -346,13 +361,22 @@ class EbayFeedbackTest extends TestCase
             ->get('/api/ebay/listings/' . $itemId . '/feedback/export');
 
         $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
-        $response->assertHeader('Content-Disposition', 'attachment; filename="ebay-feedback-' . $itemId . '.csv"');
+        $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $response->assertHeader('Content-Disposition', 'attachment; filename="ebay-feedback-' . $itemId . '.xlsx"');
 
-        $content = $response->getContent();
-        $this->assertStringContainsString('id,"eBay Item ID","Feedback ID","Commenting User"', $content);
-        $this->assertStringContainsString('buyer_1', $content);
-        $this->assertStringContainsString('buyer_2', $content);
+        $zip = new \ZipArchive();
+        $tempFile = tempnam(sys_get_temp_dir(), 'xlsx_test');
+        file_put_contents($tempFile, $response->getContent());
+        
+        $this->assertTrue($zip->open($tempFile));
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        unlink($tempFile);
+
+        $this->assertStringContainsString('id', $sheetXml);
+        $this->assertStringContainsString('eBay Item ID', $sheetXml);
+        $this->assertStringContainsString('buyer_1', $sheetXml);
+        $this->assertStringContainsString('buyer_2', $sheetXml);
     }
 
     public function test_export_endpoint_returns_cached_data_on_ebay_failure(): void
@@ -396,11 +420,20 @@ class EbayFeedbackTest extends TestCase
             ->get('/api/ebay/listings/' . $itemId . '/feedback/export');
 
         $response->assertStatus(200);
-        $content = $response->getContent();
-        $this->assertStringContainsString('cached_user', $content);
+        
+        $zip = new \ZipArchive();
+        $tempFile = tempnam(sys_get_temp_dir(), 'xlsx_test');
+        file_put_contents($tempFile, $response->getContent());
+        
+        $this->assertTrue($zip->open($tempFile));
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        unlink($tempFile);
+
+        $this->assertStringContainsString('cached_user', $sheetXml);
     }
 
-    public function test_export_endpoint_returns_empty_csv_if_no_records(): void
+    public function test_export_endpoint_returns_empty_xlsx_if_no_records(): void
     {
         $itemId = '270646159307';
 
@@ -419,10 +452,18 @@ class EbayFeedbackTest extends TestCase
             ->get('/api/ebay/listings/' . $itemId . '/feedback/export');
 
         $response->assertStatus(200);
-        $content = trim($response->getContent());
+
+        $zip = new \ZipArchive();
+        $tempFile = tempnam(sys_get_temp_dir(), 'xlsx_test');
+        file_put_contents($tempFile, $response->getContent());
         
-        // Assert only header line is present
-        $this->assertEquals('id,"eBay Item ID","Feedback ID","Commenting User","Commenting User Score","Comment Text","Comment Time","Comment Type",Role,"Transaction ID"', $content);
+        $this->assertTrue($zip->open($tempFile));
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        unlink($tempFile);
+
+        $this->assertStringContainsString('id', $sheetXml);
+        $this->assertStringContainsString('eBay Item ID', $sheetXml);
     }
 
     public function test_export_endpoint_handles_special_characters_correctly(): void
@@ -458,10 +499,17 @@ class EbayFeedbackTest extends TestCase
             ->get('/api/ebay/listings/' . $itemId . '/feedback/export');
 
         $response->assertStatus(200);
-        $content = $response->getContent();
+
+        $zip = new \ZipArchive();
+        $tempFile = tempnam(sys_get_temp_dir(), 'xlsx_test');
+        file_put_contents($tempFile, $response->getContent());
         
-        // CSV should wrap it in quotes and double quotes internal quotes
-        $this->assertStringContainsString('"This is ""special"" comment, with commas' . "\n" . 'and newlines."', $content);
+        $this->assertTrue($zip->open($tempFile));
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        unlink($tempFile);
+
+        $this->assertStringContainsString('This is &quot;special&quot; comment, with commas', $sheetXml);
     }
 
     public function test_export_endpoint_applies_optional_filters(): void
@@ -566,6 +614,287 @@ class EbayFeedbackTest extends TestCase
 
         $response = $this->actingAs($unauthorizedUser)
             ->getJson('/api/ebay/listings/270646159307/feedback/export');
+
+        $response->assertStatus(403);
+    }
+
+    public function test_batch_endpoint_requires_authentication(): void
+    {
+        $response = $this->postJson('/api/ebay/listings/feedback/batch', ['item_ids' => ['270646159307']]);
+        $response->assertStatus(401);
+    }
+
+    public function test_batch_endpoint_validates_input(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->postJson('/api/ebay/listings/feedback/batch', []);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['item_ids']);
+    }
+
+    public function test_batch_endpoint_returns_data_for_multiple_items(): void
+    {
+        $item1 = '270646159307';
+        $item2 = '280572446788';
+
+        // Pre-seed fetch log and feedback records for item1 and item2
+        EbayItemFeedbackFetch::create(['ebay_item_id' => $item1, 'last_fetched_at' => now()]);
+        EbayItemFeedbackFetch::create(['ebay_item_id' => $item2, 'last_fetched_at' => now()]);
+
+        EbayItemFeedback::create([
+            'ebay_item_id' => $item1, 'feedback_id' => '111', 'commenting_user' => 'user1',
+            'comment_text' => 'Good', 'comment_time' => now(), 'comment_type' => 'Positive', 'role' => 'Buyer'
+        ]);
+
+        EbayItemFeedback::create([
+            'ebay_item_id' => $item2, 'feedback_id' => '222', 'commenting_user' => 'user2',
+            'comment_text' => 'Great', 'comment_time' => now(), 'comment_type' => 'Positive', 'role' => 'Buyer'
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->postJson('/api/ebay/listings/feedback/batch', [
+                'item_ids' => [$item1, $item2]
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => [
+                        'item_id',
+                        'sku',
+                        'feedback',
+                        'pagination',
+                        'error',
+                    ]
+                ]
+            ])
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.item_id', $item1)
+            ->assertJsonPath('data.0.sku', 'MOCK-SKU')
+            ->assertJsonPath('data.0.feedback.0.feedback_id', '111')
+            ->assertJsonPath('data.1.item_id', $item2)
+            ->assertJsonPath('data.1.sku', 'MOCK-SKU')
+            ->assertJsonPath('data.1.feedback.0.feedback_id', '222');
+    }
+
+    public function test_batch_endpoint_handles_individual_errors_independently(): void
+    {
+        $item1 = '270646159307'; // Success item
+        $item2 = '999999999999'; // Error item (throws error)
+
+        // Seed success item
+        EbayItemFeedbackFetch::create(['ebay_item_id' => $item1, 'last_fetched_at' => now()]);
+        EbayItemFeedback::create([
+            'ebay_item_id' => $item1, 'feedback_id' => '111', 'commenting_user' => 'user1',
+            'comment_text' => 'Good', 'comment_time' => now(), 'comment_type' => 'Positive', 'role' => 'Buyer'
+        ]);
+
+        // Mock client to return failure only for GetFeedback of item2
+        $mockClient = Mockery::mock(EbayClient::class);
+        $mockClient->shouldReceive('callTradingApi')
+            ->with('GetFeedback', Mockery::on(function ($body) use ($item2) {
+                return str_contains($body, "<ItemID>{$item2}</ItemID>");
+            }))
+            ->andReturn(simplexml_load_string("<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+            <GetFeedbackResponse xmlns=\"urn:ebay:apis:eBLBaseComponents\">
+                <Ack>Failure</Ack>
+                <Errors>
+                    <ErrorCode>456</ErrorCode>
+                    <LongMessage>eBay failure</LongMessage>
+                </Errors>
+            </GetFeedbackResponse>"));
+        $this->app->instance(EbayClient::class, $mockClient);
+
+        $response = $this->actingAs($this->user)
+            ->postJson('/api/ebay/listings/feedback/batch', [
+                'item_ids' => [$item1, $item2]
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.item_id', $item1)
+            ->assertJsonPath('data.0.error', null)
+            ->assertJsonPath('data.1.item_id', $item2)
+            ->assertJsonPath('data.1.error', 'Failed to fetch feedback from eBay: eBay failure');
+    }
+
+    public function test_batch_endpoint_denies_access_without_permission(): void
+    {
+        $unauthorizedUser = User::factory()->create();
+
+        $response = $this->actingAs($unauthorizedUser)
+            ->postJson('/api/ebay/listings/feedback/batch', [
+                'item_ids' => ['270646159307']
+            ]);
+
+        $response->assertStatus(403);
+    }
+
+    public function test_get_feedback_saves_sku_to_ebay_items_table(): void
+    {
+        $itemId = '270646159307';
+
+        // Clear cache so it triggers listing lookup
+        \Illuminate\Support\Facades\Cache::forget("ebay_sku_{$itemId}");
+
+        // Mock Listing Service to return a specific SKU
+        $mockListingService = Mockery::mock(\App\Services\Ebay\EbayListingService::class);
+        $mockListingService->shouldReceive('getListingByItemId')
+            ->once()
+            ->with($itemId)
+            ->andReturn(['sku' => 'TEST-SAVE-SKU']);
+        $this->app->instance(\App\Services\Ebay\EbayListingService::class, $mockListingService);
+
+        // Pre-seed fetch log to trigger feedback retrieval (mock feedback response)
+        EbayItemFeedbackFetch::create(['ebay_item_id' => $itemId, 'last_fetched_at' => now()]);
+        EbayItemFeedback::create([
+            'ebay_item_id' => $itemId, 'feedback_id' => '111', 'commenting_user' => 'user1',
+            'comment_text' => 'Good', 'comment_time' => now(), 'comment_type' => 'Positive', 'role' => 'Buyer'
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->getJson("/api/ebay/listings/{$itemId}/feedback");
+
+        $response->assertStatus(200);
+
+        // Assert database record exists in ebay_items
+        $this->assertDatabaseHas('ebay_items', [
+            'ebay_item_id' => $itemId,
+            'sku' => 'TEST-SAVE-SKU',
+        ]);
+    }
+
+    public function test_get_feedback_does_not_overwrite_existing_sku_with_empty_value(): void
+    {
+        $itemId = '270646159307';
+
+        // Pre-seed an existing item with a SKU
+        \App\Models\EbayItem::create([
+            'ebay_item_id' => $itemId,
+            'sku' => 'EXISTING-SKU',
+        ]);
+
+        // Mock Listing Service to verify it does not query API since it exists locally
+        $mockListingService = Mockery::mock(\App\Services\Ebay\EbayListingService::class);
+        $mockListingService->shouldReceive('getListingByItemId')
+            ->never();
+        $this->app->instance(\App\Services\Ebay\EbayListingService::class, $mockListingService);
+
+        EbayItemFeedbackFetch::create(['ebay_item_id' => $itemId, 'last_fetched_at' => now()]);
+        EbayItemFeedback::create([
+            'ebay_item_id' => $itemId, 'feedback_id' => '111', 'commenting_user' => 'user1',
+            'comment_text' => 'Good', 'comment_time' => now(), 'comment_type' => 'Positive', 'role' => 'Buyer'
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->getJson("/api/ebay/listings/{$itemId}/feedback");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('sku', 'EXISTING-SKU');
+
+        // Assert SKU was NOT overwritten or changed in the DB
+        $this->assertDatabaseHas('ebay_items', [
+            'ebay_item_id' => $itemId,
+            'sku' => 'EXISTING-SKU',
+        ]);
+    }
+
+    public function test_get_feedback_saves_sku_to_ebay_items_table_even_if_cached(): void
+    {
+        $itemId = '270646159307';
+
+        // Pre-seed SKU in the cache
+        \Illuminate\Support\Facades\Cache::put("ebay_sku_{$itemId}", 'CACHED-SKU', now()->addDays(30));
+
+        // Mock Listing Service to ensure it is NEVER called because SKU is cached
+        $mockListingService = Mockery::mock(\App\Services\Ebay\EbayListingService::class);
+        $mockListingService->shouldReceive('getListingByItemId')->never();
+        $this->app->instance(\App\Services\Ebay\EbayListingService::class, $mockListingService);
+
+        // Pre-seed fetch log to trigger feedback retrieval (mock feedback response)
+        EbayItemFeedbackFetch::create(['ebay_item_id' => $itemId, 'last_fetched_at' => now()]);
+        EbayItemFeedback::create([
+            'ebay_item_id' => $itemId, 'feedback_id' => '111', 'commenting_user' => 'user1',
+            'comment_text' => 'Good', 'comment_time' => now(), 'comment_type' => 'Positive', 'role' => 'Buyer'
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->getJson("/api/ebay/listings/{$itemId}/feedback");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('sku', 'CACHED-SKU');
+
+        // Assert database record exists in ebay_items
+        $this->assertDatabaseHas('ebay_items', [
+            'ebay_item_id' => $itemId,
+            'sku' => 'CACHED-SKU',
+        ]);
+    }
+
+    public function test_batch_export_endpoint_requires_authentication(): void
+    {
+        $response = $this->postJson('/api/ebay/listings/feedback/export/batch', ['item_ids' => ['270646159307']]);
+        $response->assertStatus(401);
+    }
+
+    public function test_batch_export_endpoint_validates_input(): void
+    {
+        $response = $this->actingAs($this->user)
+            ->postJson('/api/ebay/listings/feedback/export/batch', []);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['item_ids']);
+    }
+
+    public function test_batch_export_endpoint_returns_combined_csv(): void
+    {
+        $item1 = '270646159307';
+        $item2 = '280572446788';
+
+        // Pre-seed mock database records and fetch logs
+        EbayItemFeedbackFetch::create(['ebay_item_id' => $item1, 'last_fetched_at' => now()]);
+        EbayItemFeedbackFetch::create(['ebay_item_id' => $item2, 'last_fetched_at' => now()]);
+
+        EbayItemFeedback::create([
+            'ebay_item_id' => $item1, 'feedback_id' => '111', 'commenting_user' => 'user_1',
+            'comment_text' => 'Good feedback', 'comment_time' => now(), 'comment_type' => 'Positive', 'role' => 'Buyer'
+        ]);
+
+        EbayItemFeedback::create([
+            'ebay_item_id' => $item2, 'feedback_id' => '222', 'commenting_user' => 'user_2',
+            'comment_text' => 'Great transaction', 'comment_time' => now(), 'comment_type' => 'Positive', 'role' => 'Buyer'
+        ]);
+
+        // Pre-seed local database SKUs so it reads from DB
+        \App\Models\EbayItem::create(['ebay_item_id' => $item1, 'sku' => 'SKU-A']);
+        \App\Models\EbayItem::create(['ebay_item_id' => $item2, 'sku' => 'SKU-B']);
+
+        $response = $this->actingAs($this->user)
+            ->post('/api/ebay/listings/feedback/export/batch', [
+                'item_ids' => [$item1, $item2]
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $response->assertHeader('Content-Disposition', 'attachment; filename="ebay-feedback-batch.csv"');
+
+        $content = $response->getContent();
+        // Check header
+        $this->assertStringContainsString('id,"eBay Item ID",SKU,"Feedback ID"', $content);
+        // Check data rows
+        $this->assertStringContainsString($item1 . ',SKU-A,111,user_1', $content);
+        $this->assertStringContainsString($item2 . ',SKU-B,222,user_2', $content);
+    }
+
+    public function test_batch_export_endpoint_denies_access_without_permission(): void
+    {
+        $unauthorizedUser = User::factory()->create();
+
+        $response = $this->actingAs($unauthorizedUser)
+            ->postJson('/api/ebay/listings/feedback/export/batch', [
+                'item_ids' => ['270646159307']
+            ]);
 
         $response->assertStatus(403);
     }

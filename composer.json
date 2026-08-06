@@ -88,7 +88,8 @@
             "php-http/discovery": true
         },
         "disable-tls": true,
-        "secure-http": false
+        "secure-http": false,
+        "cafile": "C:\\laragon\\www\\bridge\\cacert.pem"
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
