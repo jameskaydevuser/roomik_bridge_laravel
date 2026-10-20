@@ -36,6 +36,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/listings/feedback/batch', [\App\Http\Controllers\Api\EbayFeedbackController::class, 'getFeedbackBatch']);
         Route::get('/listings/{itemId}/feedback/export', [\App\Http\Controllers\Api\EbayFeedbackController::class, 'exportFeedback']);
         Route::post('/listings/feedback/export/batch', [\App\Http\Controllers\Api\EbayFeedbackController::class, 'exportFeedbackBatch']);
+
+        // eBay Settings Routes
+        Route::get('/settings', [\App\Http\Controllers\Api\EbaySettingController::class, 'getSettings']);
+        Route::post('/settings', [\App\Http\Controllers\Api\EbaySettingController::class, 'updateSettings']);
+        Route::put('/settings', [\App\Http\Controllers\Api\EbaySettingController::class, 'updateSettings']);
     });
 
     Route::post('/generate-ebay-fitment-csv', [\App\Http\Controllers\Api\EbayListingController::class, 'generateFitmentCsv']);

@@ -26,6 +26,9 @@ class EbayService
         if (empty($this->env)) {
             $this->env = (string)config('ebay.mode', 'sandbox');
         }
+        if (empty($this->clientId) && $this->env === 'production') {
+            $this->clientId = (string)\App\Models\Setting::get('EBAY_PROD_CLIENT_ID', config('ebay.production.client_id', ''));
+        }
         $this->marketplaceId = (string)config('services.ebay.marketplace_id', 'EBAY_US');
 
         if ($this->env === 'production') {
@@ -42,9 +45,11 @@ class EbayService
      */
     public function getAccessToken(): ?string
     {
-        // 1. Prioritize the configured token from config/ebay.php (which is working in the active environment)
+        // 1. Prioritize the configured token from config/ebay.php or settings table
         $mode = config('ebay.mode', 'sandbox');
-        $configToken = (string)config("ebay.{$mode}.auth_token");
+        $configToken = $mode === 'production'
+            ? (string)\App\Models\Setting::get('EBAY_PROD_AUTH_TOKEN', config("ebay.{$mode}.auth_token"))
+            : (string)config("ebay.{$mode}.auth_token");
 
         if (!empty($configToken)) {
             return $configToken;

@@ -994,6 +994,213 @@
                 ]
             }
         },
+        "/api/ebay/settings": {
+            "get": {
+                "tags": [
+                    "eBay Settings"
+                ],
+                "summary": "Get current eBay production configuration parameters",
+                "operationId": "e40029f59903f00b0bcbffd48a52049f",
+                "responses": {
+                    "200": {
+                        "description": "eBay settings retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "EBAY_PROD_CLIENT_ID": {
+                                                    "type": "string",
+                                                    "example": "CaltricI-Caltric-PRD-146241164-c7b797e8"
+                                                },
+                                                "EBAY_PROD_AUTH_TOKEN": {
+                                                    "type": "string",
+                                                    "example": "v^1.1#i^1#p^3#..."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    },
+                    "403": {
+                        "description": "Forbidden - Requires 'settings' permission"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "eBay Settings"
+                ],
+                "summary": "Update eBay production configuration parameters in the database (PUT alias)",
+                "operationId": "824b4ffd5004a778cb933b723c72091a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "EBAY_PROD_CLIENT_ID": {
+                                        "description": "eBay Production Client ID",
+                                        "type": "string",
+                                        "example": "CaltricI-Caltric-PRD-146241164-c7b797e8"
+                                    },
+                                    "EBAY_PROD_AUTH_TOKEN": {
+                                        "description": "eBay Production Auth Token",
+                                        "type": "string",
+                                        "example": "v^1.1#i^1#p^3#f^0#I^3#r^1#t^Ul4xMF8y..."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "eBay settings updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "eBay parameters updated successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "EBAY_PROD_CLIENT_ID": {
+                                                    "type": "string",
+                                                    "example": "CaltricI-Caltric-PRD-146241164-c7b797e8"
+                                                },
+                                                "EBAY_PROD_AUTH_TOKEN": {
+                                                    "type": "string",
+                                                    "example": "v^1.1#i^1#p^3#..."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    },
+                    "403": {
+                        "description": "Forbidden - Requires 'update_settings' permission"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "eBay Settings"
+                ],
+                "summary": "Update eBay production configuration parameters in the database",
+                "operationId": "9266b7932500a863f0827b8463b4c84a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "EBAY_PROD_CLIENT_ID": {
+                                        "description": "eBay Production Client ID (also accepts ebay_prod_client_id or client_id)",
+                                        "type": "string",
+                                        "example": "CaltricI-Caltric-PRD-146241164-c7b797e8"
+                                    },
+                                    "EBAY_PROD_AUTH_TOKEN": {
+                                        "description": "eBay Production Auth Token (also accepts ebay_prod_auth_token or auth_token)",
+                                        "type": "string",
+                                        "example": "v^1.1#i^1#p^3#f^0#I^3#r^1#t^Ul4xMF8y..."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "eBay settings updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "eBay parameters updated successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "EBAY_PROD_CLIENT_ID": {
+                                                    "type": "string",
+                                                    "example": "CaltricI-Caltric-PRD-146241164-c7b797e8"
+                                                },
+                                                "EBAY_PROD_AUTH_TOKEN": {
+                                                    "type": "string",
+                                                    "example": "v^1.1#i^1#p^3#..."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    },
+                    "403": {
+                        "description": "Forbidden - Requires 'update_settings' permission"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/profile": {
             "put": {
                 "tags": [
@@ -2196,6 +2403,10 @@
         {
             "name": "eBay Listings",
             "description": "eBay Listings"
+        },
+        {
+            "name": "eBay Settings",
+            "description": "eBay Settings"
         },
         {
             "name": "Profile",

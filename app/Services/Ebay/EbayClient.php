@@ -2,6 +2,7 @@
 
 namespace App\Services\Ebay;
 
+use App\Models\Setting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -13,7 +14,12 @@ class EbayClient
     public function __construct()
     {
         $this->mode = config('ebay.mode');
-        $this->config = config("ebay.{$this->mode}");
+        $this->config = config("ebay.{$this->mode}") ?? [];
+
+        if ($this->mode === 'production') {
+            $this->config['client_id'] = Setting::get('EBAY_PROD_CLIENT_ID', $this->config['client_id'] ?? null);
+            $this->config['auth_token'] = Setting::get('EBAY_PROD_AUTH_TOKEN', $this->config['auth_token'] ?? null);
+        }
     }
 
     /**
